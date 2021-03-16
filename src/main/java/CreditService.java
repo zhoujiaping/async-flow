@@ -4,32 +4,33 @@ import org.slf4j.LoggerFactory;
 import javax.annotation.PostConstruct;
 
 public class CreditService {
-    Logger logger = LoggerFactory.getLogger(EventBus.class);
-    EventBus creditEventBus = new EventBus("credit");
+    Logger logger = LoggerFactory.getLogger(ActionBus.class);
+    ActionBus creditEventBus = new ActionBus("credit");
     @PostConstruct
     public void init(){
-        creditEventBus.on("ready",params->{
+        creditEventBus.readyAction(params->{
             Object creditReq = params.get("creditReq");
             saveFlow();
             check();
             params.put("xxx","yyy");
             //creditEventBus.asyncTrigger("check-end", params);
-            creditEventBus.triggerIntervalIfError("check-end",10,3,params);
-        }).on("check-end",params->{
+            creditEventBus.retryTrigger("seal",10,3,params);
+        }).action("seal", params->{
             seal();
-            creditEventBus.asyncTrigger("seal-end", params);
-        }).on("seal-end",params->{
+            creditEventBus.trigger("risk", params);
+        }).action("risk", params->{
             risk();
-            creditEventBus.asyncTrigger("risk-end", params);
-        }).on("risk-end",params->{
-            api();
-            creditEventBus.asyncTrigger("api-end", params);
-        }).on("api-end",params->{
-            //
-        }).on("seal-error",params->{
-            updateCredit9999();
-            creditEventBus.asyncTrigger("finished",params);
+            creditEventBus.trigger("api", params);
+        }).action("api", params->{
+            try {
+                api();
+                creditEventBus.done(params);
+            }catch (Exception e){
+                updateCredit9999();
+                creditEventBus.error(params);
+            }
         });
+        ActionBus.put(creditEventBus);
         //Flow.regestFlow(creditEventBus);
         //query flows which is not finished!
     }
@@ -44,7 +45,8 @@ public class CreditService {
         if(eventName == null || eventName.trim().equals("")){
             eventName = "ready";
         }
-        creditEventBus.asyncTrigger(eventName,Maps.of("creditReq",bizData));
+        creditEventBus.ready(Maps.of("creditReq",bizData));
+        //creditEventBus.asyncTrigger(eventName,Maps.of("creditReq",bizData));
         //Flow.startFlow("credit",action,Maps.of("creditReq",bizData));
     }
     private void seal(){
