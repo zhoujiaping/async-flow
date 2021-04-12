@@ -47,6 +47,7 @@ MQProducer,MQConsumer用来模拟延时队列生产者和消费者。
 * 事件总线
 * 状态机
 * pipline
+* 使用spring stream
 
 
 
